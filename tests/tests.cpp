@@ -54,7 +54,8 @@ static void testTicTacToe() {
     CHECK(computerMove(board("OO XX    "), 'O', 'X') == 2);  // takes the win
     CHECK(computerMove(board("XX  O    "), 'O', 'X') == 2);  // blocks (only non-losing move)
     CHECK(computerMove(board("         "), 'O', 'X') == 4);  // centre first
-
+    resetMemo();
+    CHECK(computerMove(board("XOX O X  "), 'O', 'X') == 7);
     resetMemo();  // boards above aren't all legal positions; start the memo clean
     gamesPlayed = 0;
     CHECK(computerNeverLoses(board("         ")));  // X moves first, every line of play

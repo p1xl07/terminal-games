@@ -98,6 +98,9 @@ void resetMemo(){
 }
 
 int computerMove(const Board &board, char me, char opponent){
+    // Always take an immediate win before considering other moves.
+    int winning_move = winningSquare(board, me);
+    if (winning_move != -1) return winning_move;
     // Tie-break order when moves score equally: centre, corners, edges.
     static const int ORDER[9] = {4, 0, 2, 6, 8, 1, 3, 5, 7};
     int move = -1;

@@ -144,25 +144,33 @@ bool Minesweeper::lost() const { return lost_; }
 
 std::string Minesweeper::boardStr() const {
     std::string s;
+    int flags = 0;
+    for (int r = 0; r < ROWS; ++r) for (int c = 0; c < COLS; ++c) if (flagged_[r][c]) flags++;
+    s += "========== MINESWEEPER ==========\n";
+    s += "Board: 9x9 | Mines: " + std::to_string(MINES) + " | Flags: " + std::to_string(flags) + "\n\n";
+    s += "       1   2   3   4   5   6   7   8   9\n";
+    s += "    +-------------------------------------\n";
     for (int r = 0; r < ROWS; ++r) {
+        s += " " + std::to_string(r + 1) + "  | ";
         for (int c = 0; c < COLS; ++c) {
+            char ch = '?';
             if (revealed_[r][c]) {
-                if (mine_[r][c]) s += "*";
+                if (mine_[r][c]) ch = '*';
                 else {
                     int n = adjacentMines(r, c);
-                    s += (n == 0 ? "." : std::to_string(n));
+                    ch = (n == 0 ? '.' : '0' + n);
                 }
             } else if (flagged_[r][c]) {
-                s += "F";
-            } else {
-                s += "?";
+                ch = 'F';
             }
+            s += "[" + std::string(1, ch) + "]";
+            if (c < COLS - 1) s += " ";
         }
         s += "\n";
     }
+    s += "\nLegend: [?] Hidden  [F] Flag  [.] Empty  [1-8] Clue\n";
     return s;
 }
-
 void playMinesweeper() {
     Minesweeper game;
     std::cout << "\n=== Minesweeper ===\n"

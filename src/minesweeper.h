@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,9 @@ private:
     std::array<std::array<bool, COLS>, ROWS> flagged_{};
     bool lost_ = false;
     bool firstReveal_ = true;
+    unsigned seed_ = 0;
+    bool hasSeed_ = false;
+    std::mt19937 rng_;
 
     void clear();
     void placeMines();

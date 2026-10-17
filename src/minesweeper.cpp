@@ -5,13 +5,12 @@
 
 Minesweeper::Minesweeper() : Minesweeper(std::random_device{}()) {}
 
-Minesweeper::Minesweeper(unsigned seed) : mine_(), revealed_(), flagged_() {
-    std::mt19937 rng(seed);
+Minesweeper::Minesweeper(unsigned seed) : mine_(), revealed_(), flagged_(), seed_(seed), hasSeed_(true), rng_(seed) {
     clear();
     placeMines();
 }
 
-Minesweeper::Minesweeper(const std::vector<std::pair<int, int>>& fixedMines) : mine_(), revealed_(), flagged_() {
+Minesweeper::Minesweeper(const std::vector<std::pair<int, int>>& fixedMines) : mine_(), revealed_(), flagged_(), hasSeed_(false), rng_(std::random_device{}()) {
     clear();
     for (const auto& p : fixedMines) {
         if (inBounds(p.first, p.second)) mine_[p.first][p.second] = true;
@@ -31,12 +30,11 @@ void Minesweeper::clear() {
 }
 
 void Minesweeper::placeMines() {
-    std::mt19937 rng(std::random_device{}());
     std::vector<std::pair<int, int>> cells;
     for (int r = 0; r < ROWS; ++r)
         for (int c = 0; c < COLS; ++c)
             cells.push_back({r, c});
-    std::shuffle(cells.begin(), cells.end(), rng);
+    std::shuffle(cells.begin(), cells.end(), rng_);
     for (int i = 0; i < MINES; ++i) {
         mine_[cells[i].first][cells[i].second] = true;
     }
@@ -86,9 +84,10 @@ bool Minesweeper::reveal(int r, int c) {
                 }
             }
             if (!safe.empty()) {
-                std::mt19937 rng(std::random_device{}());
                 std::uniform_int_distribution<size_t> dist(0, safe.size() - 1);
-                auto [mr, mc] = safe[dist(rng)];
+                size_t idx = dist(rng_);
+                int mr = safe[idx].first;
+                int mc = safe[idx].second;
                 mine_[mr][mc] = true;
                 mine_[r][c] = false;
             }
@@ -132,12 +131,14 @@ bool Minesweeper::toggleFlag(int r, int c) {
 
 bool Minesweeper::won() const {
     int revealedSafe = 0;
+    int totalMines = 0;
     for (int r = 0; r < ROWS; ++r) {
         for (int c = 0; c < COLS; ++c) {
+            if (mine_[r][c]) totalMines++;
             if (revealed_[r][c] && !mine_[r][c]) revealedSafe++;
         }
     }
-    return revealedSafe == (ROWS * COLS - MINES);
+    return revealedSafe == (ROWS * COLS - totalMines);
 }
 
 bool Minesweeper::lost() const { return lost_; }
@@ -177,51 +178,45 @@ void playMinesweeper() {
               << "Board is 9x9 with 10 mines.\n"
               << "Commands: r row col (reveal), f row col (flag/unflag), q (quit)\n"
               << "Coordinates are 1-9 (top-left is row 1, column 1).\n";
-
     while (!game.won() && !game.lost()) {
         std::cout << "\n" << game.boardStr();
         std::cout << "Action (r/f) or q: ";
         char cmd = 0;
-        std::cin >> cmd;
-        if (cmd == 'q' || cmd == 'Q') {
-            std::cout << "Quitting Minesweeper.\n";
-            return;
+        if (!(std::cin >> cmd)) {
+            if (std::cin.eof()) { std::cout << "\nExiting Minesweeper.\n"; return; }
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            continue;
         }
+        if (cmd == 'q' || cmd == 'Q') { std::cout << "Quitting Minesweeper.\n"; return; }
         if (cmd != 'r' && cmd != 'R' && cmd != 'f' && cmd != 'F') {
             std::cout << "Invalid command. Use r (reveal), f (flag), or q (quit).\n";
             std::cin.clear();
-            std::cin.ignore(10000, '\n');
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             continue;
         }
         int row = -1, col = -1;
         if (!(std::cin >> row >> col)) {
+            if (std::cin.eof()) { std::cout << "\nExiting Minesweeper.\n"; return; }
             std::cin.clear();
-            std::cin.ignore(10000, '\n');
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::cout << "Invalid input. Enter two numbers.\n";
             continue;
         }
-        // Accept both 1-based and 0-based coordinates.
-        if (row >= 1 && row <= Minesweeper::ROWS && col >= 1 && col <= Minesweeper::COLS) {
-            row -= 1; col -= 1;
-        } else if (row >= 0 && row < Minesweeper::ROWS && col >= 0 && col < Minesweeper::COLS) {
-            // already 0-based
-        } else {
-            std::cout << "Invalid coordinates (use 1-9).\n";
-            continue;
+        if (row < 1 || row > Minesweeper::ROWS || col < 1 || col > Minesweeper::COLS) {
+            std::cout << "Invalid coordinates (use 1-9).\n"; continue;
         }
+        row -= 1; col -= 1;
         if (cmd == 'r' || cmd == 'R') {
             if (!game.reveal(row, col)) {
                 if (game.lost()) {
-                    std::cout << "\nBOOM! You hit a mine.\n"
-                              << "\nFinal board:\n" << game.boardStr()
-                              << "\nGame over!\n";
+                    std::cout << "\nBOOM! You hit a mine.\n\nFinal board:\n" << game.boardStr() << "\nGame over!\n";
                 } else {
                     std::cout << "That cell is already revealed or flagged.\n";
                 }
             } else {
                 if (game.won()) {
-                    std::cout << "\nCongratulations! You cleared the board!\n"
-                              << game.boardStr();
+                    std::cout << "\nCongratulations! You cleared the board!\n" << game.boardStr();
                 }
             }
         } else {

@@ -1,100 +1,96 @@
 #include "minesweeper.h"
 #include <iostream>
 #include <string>
-int testMinePlacement() {
-    Minesweeper game(42);
-    int mineCount = 0;
-    for (int r = 0; r < Minesweeper::ROWS; ++r) {
-        for (int c = 0; c < Minesweeper::COLS; ++c) {
-            if (game.isMine(r, c)) mineCount++;
-        }
-    }
-    if (mineCount != Minesweeper::MINES) {
-        std::cout << "FAIL tests.cpp:testMinePlacement " << mineCount << " != " << Minesweeper::MINES << "\n";
-        return 1;
-    }
+#include <vector>
+int testFixedLayoutFloodFill() {
+    std::vector<std::pair<int,int>> mines = {{0,0}};
+    Minesweeper game(mines);
+    bool ok = game.reveal(2, 2);
+    if (!ok) { std::cout << "FAIL fixedFloodFill reveal\n"; return 1; }
+    if (!game.isRevealed(2,2)) { std::cout << "FAIL fixedFloodFill (2,2) not revealed\n"; return 1; }
+    if (game.isMine(2,2)) { std::cout << "FAIL fixedFloodFill (2,2) is mine\n"; return 1; }
     return 0;
 }
-
-int testAdjacentMines() {
-    // Create a deterministic board: place mines at (0,0), (0,2), (2,0), (2,2)
-    // That's a plus shape with center (1,1) having 4 adjacent mines
-    std::array<std::array<bool, Minesweeper::COLS>, Minesweeper::ROWS> testMine_{};
-    for (int r = 0; r < Minesweeper::ROWS; ++r) for (int c = 0; c < Minesweeper::COLS; ++c) testMine_[r][c] = false;
-    testMine_[0][0] = true; testMine_[0][2] = true; testMine_[2][0] = true; testMine_[2][2] = true;
-    // Create a game with a seed that reproduces this board (hack via reflection isn't possible,
-    // so we rely on the game's internal RNG determinism; we'll just accept whatever board it gives us.
-    // For this test we create a custom game instance and set mines directly (use a friend or internal manipulation).
-    // Since Minesweeper doesn't expose internal state, we'll test adjacentMines in general.
-    Minesweeper game(12345);
-    // We can still check that adjacentMines returns a value between 0 and 8
+int testFixedLayoutWin() {
+    std::vector<std::pair<int,int>> mines = {{8,8}};
+    Minesweeper game(mines);
+    game.reveal(0,0);
     for (int r = 0; r < Minesweeper::ROWS; ++r) {
         for (int c = 0; c < Minesweeper::COLS; ++c) {
-            int adj = game.adjacentMines(r, c);
-            if (adj < 0 || adj > 8) {
-                std::cout << "FAIL tests.cpp:testAdjacentMines " << adj << " is out of range\n";
-                return 1;
+            if (!(r == 8 && c == 8) && !game.isRevealed(r,c) && !game.isMine(r,c)) {
+                game.reveal(r, c);
             }
         }
     }
+    if (!game.won()) { std::cout << "FAIL fixedWin\n"; return 1; }
+    if (game.lost()) { std::cout << "FAIL fixedWin lost\n"; return 1; }
     return 0;
 }
-
-int testRevealFlags() {
-    // Simple reveal test on a custom deterministic board (single mine)
-    // We need to create a game where we know the mine position. Since we cannot easily manipulate the board,
-    // we'll just test that reveal works (doesn't crash) and doesn't reveal mines initially.
-    Minesweeper game(999);
-    bool revealed = game.reveal(0, 0);
-    // Just ensure no crash
+int testFixedLayoutLoss() {
+    std::vector<std::pair<int,int>> mines = {{2,2}};
+    Minesweeper game(mines);
+    game.reveal(0,0);
+    bool ok = game.reveal(2,2);
+    if (ok) { std::cout << "FAIL fixedLoss reveal mine returned true\n"; return 1; }
+    if (!game.lost()) { std::cout << "FAIL fixedLoss not lost\n"; return 1; }
     return 0;
 }
-
 int testFlagToggle() {
-    Minesweeper game(777);
-    game.toggleFlag(0, 0);
-    if (!game.isFlagged(0, 0)) {
-        std::cout << "FAIL tests.cpp:testFlagToggle flag not set\n";
-        return 1;
-    }
-    game.toggleFlag(0, 0);
-    if (game.isFlagged(0, 0)) {
-        std::cout << "FAIL tests.cpp:testFlagToggle flag not cleared\n";
-        return 1;
-    }
+    Minesweeper game;
+    game.toggleFlag(0,0);
+    if (!game.isFlagged(0,0)) { std::cout << "FAIL flagSet\n"; return 1; }
+    game.toggleFlag(0,0);
+    if (game.isFlagged(0,0)) { std::cout << "FAIL flagClear\n"; return 1; }
     return 0;
 }
-
 int testFirstRevealSafety() {
     Minesweeper game(111);
-    // First reveal should never hit a mine (mine will be moved if it would)
-    bool revealed = game.reveal(0, 0);
-    if (game.lost()) {
-        std::cout << "FAIL tests.cpp:testFirstRevealSafety game lost on first reveal\n";
-        return 1;
+    bool ok = game.reveal(0,0);
+    if (game.lost()) { std::cout << "FAIL firstReveal lost\n"; return 1; }
+    if (!ok) { std::cout << "FAIL firstReveal false\n"; return 1; }
+    return 0;
+}
+int testSeedingRepeatable() {
+    Minesweeper a(42), b(42);
+    for (int r = 0; r < Minesweeper::ROWS; ++r)
+        for (int c = 0; c < Minesweeper::COLS; ++c)
+            if (a.isMine(r,c) != b.isMine(r,c)) { std::cout << "FAIL seedLayoutCell\n"; return 1; }
+    a.reveal(4,4); b.reveal(4,4);
+    if (a.isRevealed(4,4) != b.isRevealed(4,4)) { std::cout << "FAIL seedRepeat\n"; return 1; }
+    // First-click relocation must also be identical for identical seeds
+    if (a.lost() != b.lost()) { std::cout << "FAIL seedRelocationLost\n"; return 1; }
+    return 0;
+}
+int testDifferentSeedsCanDiffer() {
+    Minesweeper a(1), b(2);
+    int ca=0, cb=0;
+    for (int r=0;r<Minesweeper::ROWS;++r) for (int c=0;c<Minesweeper::COLS;++c) {
+        if (a.isMine(r,c)) ca++;
+        if (b.isMine(r,c)) cb++;
     }
+    if (ca != Minesweeper::MINES || cb != Minesweeper::MINES) { std::cout << "FAIL seedDiff\n"; return 1; }
     return 0;
 }
-
-int testWonCondition() {
-    // Create a game where all safe cells are revealed
-    Minesweeper game(222);
-    // We'll reveal all cells that are not mines; this will naturally happen via flood fill
-    // We need to know mine positions; since we can't introspect, we'll just trust that
-    // repeated reveals of all cells will eventually win (but not necessarily due to flags).
-    // For a proper test we should create a custom game state.
+int testStoredEngineRepeatable() {
+    Minesweeper a(42), b(42);
+    for (int r = 0; r < Minesweeper::ROWS; ++r)
+        for (int c = 0; c < Minesweeper::COLS; ++c)
+            if (a.isMine(r, c) != b.isMine(r, c)) { std::cout << "FAIL engineRepeat mine\n"; return 1; }
+    a.reveal(4,4); b.reveal(4,4);
+    if (a.isRevealed(4,4) != b.isRevealed(4,4)) { std::cout << "FAIL engineRepeat reveal\n"; return 1; }
     return 0;
 }
-
 int main() {
-    int failures = 0;
-    failures += testMinePlacement();
-    failures += testAdjacentMines();
-    failures += testRevealFlags();
-    failures += testFlagToggle();
-    failures += testFirstRevealSafety();
-    failures += testWonCondition();
-    if (failures == 0) std::cout << "All Minesweeper tests passed.\n";
-    else std::cout << "Some Minesweeper tests failed (" << failures << ").\n";
-    return failures;
+    int f = 0;
+    f += testFixedLayoutFloodFill();
+    f += testFixedLayoutWin();
+    f += testFixedLayoutLoss();
+    f += testFlagToggle();
+    f += testFirstRevealSafety();
+    f += testSeedingRepeatable();
+    f += testDifferentSeedsCanDiffer();
+    f += testStoredEngineRepeatable();
+    if (f == 0) std::cout << "All Minesweeper tests passed.\n";
+    else std::cout << "Some Minesweeper tests failed (" << f << ").\n";
+    return f;
 }

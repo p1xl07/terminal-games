@@ -13,6 +13,7 @@
 #include "hangman.h"
 #include "snake.h"
 #include "spaceinvaders.h"
+#include "tetris.h"
 #include "tictactoe.h"
 
 #ifdef _WIN32
@@ -281,10 +282,7 @@ void initConsole() {
 }
 
 const std::vector<GameTrial>& getGameTrials() {
-    // Registry of merged games. Scales dynamically:
-    // When Tetris (#41) and Space Invaders (#39) are integrated,
-    // they take trial IDs 7 (♣) and 8 (♠); Quit automatically increments
-    // to 8 and 9 without hardcoded modifications or layout breakage.
+    // Registry of merged games. IDs and the Quit option scale dynamically.
     static const std::vector<GameTrial> registry = {
         {1, "2048",      "2048",         "♦", "Logic",    CLR_RED,  play2048},
         {2, "TIC-TAC",   "Tic-tac-toe",  "♥", "Strategy", CLR_RED,  playTicTacToe},
@@ -292,7 +290,8 @@ const std::vector<GameTrial>& getGameTrials() {
         {4, "SNAKE",     "Snake",        "♠", "Reflexes", CLR_CYAN, playSnake},
         {5, "DINO",      "Dinosaur Run", "♦", "Survival", CLR_RED,  playDino},
         {6, "BLACKJACK", "Blackjack",    "♥", "Tactics",  CLR_RED,  playBlackjack},
-        {7, "INVADERS",  "Space Invaders", "♠", "Defense",  CLR_CYAN, playSpaceInvaders},
+        {7, "TETRIS",    "Tetris",       "♣", "Agility",  CLR_CYAN, playTetris},
+        {8, "INVADERS",  "Space Invaders", "♠", "Defense",  CLR_CYAN, playSpaceInvaders},
     };
     return registry;
 }

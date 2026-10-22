@@ -10,6 +10,7 @@
 #include "hangman.h"
 #include "intro.h"
 #include "snake.h"
+#include "tetris.h"
 #include "tictactoe.h"
 
 static int failures = 0;
@@ -318,6 +319,213 @@ static void testBlackjack() {
     }
 }
 
+static void testTetris() {
+    TetrisGame first(1234);
+    TetrisGame sameSeed(1234);
+    std::vector<Tetromino> sequenceA;
+    std::vector<Tetromino> sequenceB;
+    for (int i = 0; i < 28; ++i) {
+        sequenceA.push_back(first.currentPiece());
+        sequenceB.push_back(sameSeed.currentPiece());
+        CHECK(first.currentPiece() == sameSeed.currentPiece());
+        first.hardDrop();
+        sameSeed.hardDrop();
+        first.setBoardForTesting(TetrisGame::Board{});
+        sameSeed.setBoardForTesting(TetrisGame::Board{});
+    }
+    CHECK(sequenceA == sequenceB);
+    for (int bag = 0; bag < 4; ++bag) {
+        std::array<int, 7> counts{};
+        for (int i = 0; i < 7; ++i) ++counts[static_cast<int>(sequenceA[bag * 7 + i])];
+        for (int count : counts) CHECK(count == 1);
+    }
+
+    for (int piece = 0; piece < 7; ++piece) {
+        TetrisGame rotating(42);
+        const auto tetromino = static_cast<Tetromino>(piece);
+        rotating.setCurrentForTesting(tetromino, 0, 3, 5);
+        if (tetromino == Tetromino::O) {
+            CHECK(!rotating.rotateClockwise());
+            CHECK(rotating.rotation() == 0);
+            continue;
+        }
+        for (int turn = 0; turn < 4; ++turn) CHECK(rotating.rotateClockwise());
+        CHECK(rotating.rotation() == 0);
+        for (int turn = 0; turn < 4; ++turn) CHECK(rotating.rotateCounterClockwise());
+        CHECK(rotating.rotation() == 0);
+    }
+
+    TetrisGame wallKick(17);
+    wallKick.setCurrentForTesting(Tetromino::I, 1, 7, 5);
+    CHECK(!wallKick.isGameOver());
+    CHECK(wallKick.rotateClockwise());
+    CHECK(wallKick.rotation() == 2);
+    CHECK(wallKick.x() == 6);
+
+    TetrisGame boundaries(18);
+    boundaries.setCurrentForTesting(Tetromino::T, 0, 0, 4);
+    CHECK(!boundaries.moveLeft());
+    boundaries.setCurrentForTesting(Tetromino::I, 0, 3, 0);
+    TetrisGame::Board obstacle{};
+    obstacle[5][4] = static_cast<int>(Tetromino::J) + 1;
+    boundaries.setBoardForTesting(obstacle);
+    boundaries.setCurrentForTesting(Tetromino::T, 0, 3, 3);
+    CHECK(!boundaries.softDrop());
+    CHECK(boundaries.y() == 3);
+    boundaries.setBoardForTesting(TetrisGame::Board{});
+    boundaries.setCurrentForTesting(Tetromino::T, 0, 3, 20);
+    CHECK(!boundaries.softDrop());
+
+    TetrisGame oneLine(21);
+    TetrisGame::Board oneLineBoard{};
+    for (int x = 0; x < 8; ++x) oneLineBoard[21][x] = 1;
+    oneLine.setBoardForTesting(oneLineBoard);
+    oneLine.setCurrentForTesting(Tetromino::O, 0, 7, 20);
+    oneLine.hardDrop();
+    CHECK(oneLine.lines() == 1);
+    CHECK(oneLine.score() == 100);
+
+    TetrisGame twoLines(22);
+    TetrisGame::Board twoLineBoard{};
+    for (int row = 20; row < 22; ++row)
+        for (int x = 0; x < 8; ++x) twoLineBoard[row][x] = 1;
+    twoLines.setBoardForTesting(twoLineBoard);
+    twoLines.setCurrentForTesting(Tetromino::O, 0, 7, 20);
+    twoLines.hardDrop();
+    CHECK(twoLines.lines() == 2);
+    CHECK(twoLines.score() == 300);
+
+    TetrisGame tetris(23);
+    TetrisGame::Board fourLineBoard{};
+    for (int row = 18; row < 22; ++row)
+        for (int x = 0; x < TetrisGame::WIDTH; ++x)
+            if (x != 8) fourLineBoard[row][x] = 1;
+    tetris.setBoardForTesting(fourLineBoard);
+    tetris.setCurrentForTesting(Tetromino::I, 1, 6, 18);
+    tetris.hardDrop();
+    CHECK(tetris.lines() == 4);
+    CHECK(tetris.score() == 800);
+    fourLineBoard = tetris.board();
+    for (int row = 18; row < 22; ++row) {
+        fourLineBoard[row].fill(1);
+        fourLineBoard[row][8] = 0;
+    }
+    tetris.setBoardForTesting(fourLineBoard);
+    tetris.setCurrentForTesting(Tetromino::I, 1, 6, 18);
+    tetris.hardDrop();
+    CHECK(tetris.lines() == 8);
+    CHECK(tetris.score() == 2000);
+
+    TetrisGame drop(24);
+    const int dropDistance = drop.ghostY() - drop.y();
+    CHECK(dropDistance > 0);
+    CHECK(drop.hardDrop() == dropDistance);
+    CHECK(drop.score() == dropDistance * 2);
+
+    TetrisGame softDrop(30);
+    CHECK(softDrop.softDrop());
+    CHECK(softDrop.y() == 1);
+    CHECK(softDrop.score() == 1);
+
+    TetrisGame gravity(31);
+    CHECK(gravity.gravityPeriod() == 45);
+    for (int tick = 0; tick < 44; ++tick) gravity.tick();
+    CHECK(gravity.y() == 0);
+    gravity.tick();
+    CHECK(gravity.y() == 1);
+
+    TetrisGame lockDelay(32);
+    lockDelay.setCurrentForTesting(Tetromino::T, 0, 3, 20);
+    for (int tick = 0; tick < TetrisGame::LOCK_DELAY_TICKS - 1; ++tick)
+        lockDelay.tick();
+    CHECK(lockDelay.board() == TetrisGame::Board{});
+    lockDelay.tick();
+    CHECK(lockDelay.board() != TetrisGame::Board{});
+
+    TetrisGame lockReset(33);
+    lockReset.setCurrentForTesting(Tetromino::T, 0, 3, 20);
+    for (int tick = 0; tick < TetrisGame::LOCK_DELAY_TICKS - 1; ++tick)
+        lockReset.tick();
+    CHECK(lockReset.moveLeft());
+    for (int tick = 0; tick < TetrisGame::LOCK_DELAY_TICKS - 1; ++tick)
+        lockReset.tick();
+    CHECK(lockReset.board() == TetrisGame::Board{});
+    lockReset.tick();
+    CHECK(lockReset.board() != TetrisGame::Board{});
+
+    TetrisGame lockResetLimit(34);
+    lockResetLimit.setCurrentForTesting(Tetromino::T, 0, 3, 20);
+    for (int reset = 0; reset < TetrisGame::MAX_LOCK_RESETS; ++reset) {
+        for (int tick = 0; tick < TetrisGame::LOCK_DELAY_TICKS - 1; ++tick)
+            lockResetLimit.tick();
+        CHECK(reset % 2 == 0 ? lockResetLimit.moveLeft() : lockResetLimit.moveRight());
+    }
+    for (int tick = 0; tick < TetrisGame::LOCK_DELAY_TICKS - 1; ++tick)
+        lockResetLimit.tick();
+    CHECK(lockResetLimit.board() == TetrisGame::Board{});
+    CHECK(lockResetLimit.moveLeft());
+    lockResetLimit.tick();
+    CHECK(lockResetLimit.board() != TetrisGame::Board{});
+
+    TetrisGame hold(25);
+    const Tetromino outgoing = hold.currentPiece();
+    CHECK(hold.canHold());
+    CHECK(hold.hold());
+    CHECK(hold.hasHeldPiece());
+    CHECK(hold.heldPiece() == outgoing);
+    CHECK(!hold.canHold());
+    CHECK(!hold.hold());
+    hold.hardDrop();
+    CHECK(hold.canHold());
+
+    TetrisGame ghost(26);
+    TetrisGame::Board platform{};
+    platform[21].fill(1);
+    ghost.setBoardForTesting(platform);
+    ghost.setCurrentForTesting(Tetromino::I, 0, 3, 0);
+    CHECK(ghost.ghostY() == 19);
+
+    TetrisGame progression(27);
+    progression.setLinesForTesting(9);
+    TetrisGame::Board levelBoard{};
+    for (int x = 0; x < 8; ++x) levelBoard[21][x] = 1;
+    progression.setBoardForTesting(levelBoard);
+    progression.setCurrentForTesting(Tetromino::O, 0, 7, 20);
+    progression.hardDrop();
+    CHECK(progression.lines() == 10);
+    CHECK(progression.level() == 2);
+    CHECK(progression.gravityPeriod() < 60);
+    progression.setLinesForTesting(140);
+    CHECK(progression.level() == 15);
+    CHECK(progression.gravityPeriod() == 3);
+
+    TetrisGame topOut(28);
+    TetrisGame::Board spawnBlocked{};
+    for (auto& row : spawnBlocked) row.fill(1);
+    topOut.setBoardForTesting(spawnBlocked);
+    topOut.spawnNextForTesting();
+    CHECK(topOut.isGameOver());
+
+    TetrisGame bot(29);
+    for (int tick = 0; tick < 5000; ++tick) {
+        if (bot.isGameOver()) bot = TetrisGame(static_cast<std::uint32_t>(tick + 30));
+        switch (tick % 7) {
+            case 0: bot.moveLeft(); break;
+            case 1: bot.moveRight(); break;
+            case 2: bot.rotateClockwise(); break;
+            case 3: bot.rotateCounterClockwise(); break;
+            case 4: bot.softDrop(); break;
+            case 5: bot.hold(); break;
+            case 6: bot.tick(); break;
+        }
+        if (tick % 19 == 0) bot.hardDrop();
+        if (!bot.isValidState()) {
+            CHECK(false);
+            break;
+        }
+    }
+}
+
 // A simple autopilot: jumps cacti and low birds, ducks mid-height birds.
 static void autopilot(const DinoGame& game, bool& jump, bool& duck) {
     jump = false;
@@ -576,15 +784,16 @@ static void testSnake() {
 
 static void testBorderland() {
     const auto& trials = Borderland::getGameTrials();
-    CHECK(trials.size() >= 7);
-    // Suits matching Issue #34 & #39: 2048 is diamonds, tic-tac-toe hearts, hangman clubs, snake spades, dino diamonds, blackjack hearts, space invaders spades
+    CHECK(trials.size() >= 8);
+    // Tetris and Space Invaders occupy cards 7 and 8; Quit follows the registry.
     CHECK(trials[0].id == 1 && trials[0].title == "2048" && trials[0].suit == "♦" && trials[0].trialType == "Logic");
     CHECK(trials[1].id == 2 && trials[1].title == "TIC-TAC" && trials[1].suit == "♥" && trials[1].trialType == "Strategy");
     CHECK(trials[2].id == 3 && trials[2].title == "HANGMAN" && trials[2].suit == "♣" && trials[2].trialType == "Words");
     CHECK(trials[3].id == 4 && trials[3].title == "SNAKE" && trials[3].suit == "♠" && trials[3].trialType == "Reflexes");
     CHECK(trials[4].id == 5 && trials[4].title == "DINO" && trials[4].displayName == "Dinosaur Run" && trials[4].suit == "♦");
     CHECK(trials[5].id == 6 && trials[5].title == "BLACKJACK" && trials[5].displayName == "Blackjack" && trials[5].suit == "♥");
-    CHECK(trials[6].id == 7 && trials[6].title == "INVADERS" && trials[6].displayName == "Space Invaders" && trials[6].suit == "♠");
+    CHECK(trials[6].id == 7 && trials[6].title == "TETRIS" && trials[6].displayName == "Tetris" && trials[6].suit == "♣" && trials[6].trialType == "Agility");
+    CHECK(trials[7].id == 8 && trials[7].title == "INVADERS" && trials[7].displayName == "Space Invaders" && trials[7].suit == "♠" && trials[7].trialType == "Defense");
     for (const auto& t : trials) {
         CHECK(t.play != nullptr);
     }
@@ -816,6 +1025,7 @@ int main() {
     testBlackjack();
     testDino();
     testSnake();
+    testTetris();
     if (failures == 0) std::cout << "All tests passed.\n";
     return failures == 0 ? 0 : 1;
 }

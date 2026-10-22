@@ -24,9 +24,8 @@ void initConsole();
 // Returns the global registry of games.
 // Scales dynamically as new games are added. Suits cycle through:
 // ♦ (Logic/Survival), ♥ (Strategy/Tactics), ♣ (Words/Agility), ♠ (Reflexes/Defense).
-// Upcoming integrations:
-// - Card 7 (Tetris, Issue #41): ♣ (Clubs), Cyan, "TETRIS", "Tetris", "Agility"
-// - Card 8 (Space Invaders, Issue #39): ♠ (Spades), Cyan, "INVADERS", "Space Invaders", "Defense"
+// Tetris is Card 7 (♣, Agility), followed by Space Invaders as Card 8
+// (♠, Defense); IDs and the Quit option update when more games are added.
 const std::vector<GameTrial>& getGameTrials();
 
 // Computes the total number of pages given trial count and page size (default 8)

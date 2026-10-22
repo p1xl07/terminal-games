@@ -1,6 +1,6 @@
 # terminal-games
 
-2048, tic-tac-toe against the computer, hangman, Snake, Blackjack, and a dinosaur run in the terminal. Written in C++17.
+2048, tic-tac-toe against the computer, hangman, Snake, Blackjack, Tetris, Space Invaders, and a dinosaur run in the terminal. Written in C++17.
 
 ## Running it
 
@@ -18,7 +18,7 @@ Run `cmake --build build` again after every change.
 ## How it's supposed to work
 
 Menu
-- Choose 1–6 for a game or 7 to quit. Invalid entries print an error and ask again.
+- Choose a numbered game card, `0` to change menu page when available, or the displayed Quit option. In the current 8-game menu, Tetris is 7, Space Invaders is 8, and Quit is 9. Invalid entries print an error and ask again.
 
 2048 (`w a s d` to move, `u` to undo)
 - Tiles slide as far as they can. Equal tiles that meet merge, and a tile only merges once per move: `2 2 2 2` moved left is `4 4 _ _`.
@@ -62,10 +62,19 @@ Space Invaders (arrow keys or `a`/`d` to steer, Space or `w`/Up to shoot, `q` to
 - Alien fleet shifts and descends whenever reaching the borders; movement speed accelerates as alien numbers diminish.
 - Clear all invaders to advance to the next level. The game ends if all lives are lost or invaders descend to bunker/cannon level.
 
+Tetris
+- The playfield is 10 columns wide with 20 visible rows and 2 hidden spawn rows. Pieces come from a seeded 7-bag randomizer; each bag contains all seven tetrominoes once, and the same seed produces the same sequence.
+- Left/Right arrows or `a`/`d` move; Down or `s` soft-drops one row for 1 point; Up or `x` rotates clockwise; `z` rotates counter-clockwise. Rotation uses SRS wall kicks. Controls work without pressing Enter, and each Down press soft-drops one row.
+- Space hard-drops and locks the piece for 2 points per row. `c` holds or swaps the current piece once per turn; `p` pauses the game timers; `q`, Escape, or Ctrl-C returns to the menu.
+- A ghost shows the landing position. The side panels display the held piece, next three pieces, score, level, lines, and session high score. After game over, press `r` to restart or `q`/Escape to return to the menu.
+- Clearing 1/2/3/4 lines scores 100/300/500/800 points, multiplied by the current level. Back-to-back Tetrises score 1.5 times the normal Tetris points. Every 10 cleared lines advances a level and speeds up gravity, from one row every 45 ticks at level 1 to every 3 ticks at level 15.
+- Pieces lock after 30 ticks (0.5 seconds) on the ground. Successful moves or rotations can reset the lock delay up to 15 times.
+- `TetrisGame` (`src/tetris.h` and `src/tetris.cpp`) contains the game rules independently of input and drawing. `playTetris()` handles POSIX raw input and rendering, and restores terminal settings when you leave. A terminal smaller than 80 columns by 24 rows displays a warning and returns to the menu.
+
 ## Code
 
 - `src/main.cpp`: the menu
-- `src/game2048.*`, `src/tictactoe.*`, `src/hangman.*`, `src/snake.*`, `src/dino.*`, `src/blackjack.*`: the games
+- `src/game2048.*`, `src/tictactoe.*`, `src/hangman.*`, `src/snake.*`, `src/dino.*`, `src/blackjack.*`, `src/tetris.*`, `src/spaceinvaders.*`: the games
 - `tests/tests.cpp`: tests, using a small `CHECK` macro
 - `src/intro.*`: Borderland startup animation, scalable trial card rendering, and theme menu
 - `src/spaceinvaders.*`: Space Invaders arcade game logic and renderer

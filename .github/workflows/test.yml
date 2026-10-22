@@ -8,3 +8,9 @@ jobs:
       - run: cmake -B build
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
+  windows-tetris-compile:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -A x64
+      - run: cmake --build build --target tetris_windows_compile --config Release

@@ -4,8 +4,13 @@ project(terminal_games CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(games_lib src/tictactoe.cpp src/game2048.cpp src/hangman.cpp src/snake.cpp src/dino.cpp src/blackjack.cpp)
+add_library(games_lib src/tictactoe.cpp src/game2048.cpp src/hangman.cpp src/snake.cpp src/dino.cpp src/blackjack.cpp src/tetris.cpp)
 target_include_directories(games_lib PUBLIC src)
+
+if(WIN32)
+    add_library(tetris_windows_compile OBJECT src/tetris.cpp)
+    target_include_directories(tetris_windows_compile PRIVATE src)
+endif()
 
 add_executable(games src/main.cpp)
 target_link_libraries(games games_lib)

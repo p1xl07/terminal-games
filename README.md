@@ -1,6 +1,6 @@
 # terminal-games
 
-2048, tic-tac-toe against the computer, hangman, Snake, Minesweeper, Blackjack, Tetris, Space Invaders, and a dinosaur run in the terminal. Written in C++17. (Fix Minesweeper gameplay and add tests)
+2048, tic-tac-toe against the computer, hangman, Snake, Minesweeper, Blackjack, Tetris, Space Invaders, and a dinosaur run in the terminal. Written in C++17.
 
 ## Running it
 
